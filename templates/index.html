@@ -69,7 +69,7 @@
   </div>
 
   <script>
-    document.getElementByID('query-form').addEventListener('submit', async function(e) {
+    document.getElementById('query-form').addEventListener('submit', async function(e) {
       e.preventDefault();
 
       const userInput = document.getElementById('user-input').value.trim();
@@ -96,7 +96,7 @@
         const response = await fetch('/ask', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/z-www-form-urlencoded',
+            'Content-Type': 'application/x-www-form-urlencoded',
           },
           body: new URLSearchParams({
             'user_input': userInput,
@@ -109,9 +109,9 @@
         const agentMessageDiv = document.createElement('div');
         agentMessageDiv.className = 'message agent-message';
         agentMessageDiv.textContent = data.response;
-        messagesDiv.appendChiled(agentMessageDiv);
+        messagesDiv.appendChild(agentMessageDiv);
       } catch (error) {
-        console.errror('Error:', error);
+        console.error('Error:', error);
 
         // Add Error Message
         const errorDiv = document.createElement('div');

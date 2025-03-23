@@ -4,6 +4,8 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from dotenv import load_dotenv
+import math
+import youtube_api 
 
 # Environment Variables
 load_dotenv()
@@ -18,6 +20,7 @@ class VideoAgent:
         #Initialize the VideoAgent class.
         self.lemmatizer = WordNetLemmatizer()
         self.stop_words = set(stopwords.words('english'))
+        self.youtube_api = youtube_api.YouTubeAPI()
 
         # Define Learning Levels
         self.learning_levels = {
@@ -85,33 +88,89 @@ class VideoAgent:
                     syn in original_input for syn in synonyms):
                 return level
         return 'beginner'  # Default Learning Level
+    
+    def recommend_videos(self, query_params):
+        # Returns List of Videos Sorted by Relevance Score
+        subject = query_params['subject']
+        subtopic = query_params['subtopic']
+        level = query_params['level']
+
+        # Get Videos from YouTube API
+        videos = self.youtube_api.search_specific_videos(
+            subject, subtopic, level)
+        
+        if not videos:
+            return []
+        
+        # Calculate Relevance Score for Each Video and Sort
+        for video in videos:
+            video['score'] = self.calculate_relevance_score(video, level, subject, subtopic)
+        
+        videos.sort(key=lambda x: x['score'], reverse=True)
+
+        return videos[:5]
+    
+    def calculate_relevance_score(self, video, level, subject, subtopic):
+        # Calculates Relevance Score for a Video
+        score = 0
+
+        # View Count Score
+        if video['view_count'] > 0:
+            score += math.log(video['view_count']) * 10
+        
+        # Like Count Score
+        if video['like_count'] > 0:
+            score += math.log(video['like_count']) * 5
+
+        # Title Subject/Subtopic Match Score
+        title_lower = video['title'].lower()
+        if subject.lower() in title_lower:
+            score += 30
+        if subtopic.lower() in title_lower:
+            score += 20
+        
+        # Check for Level Keywords in Title
+        level_terms = self.learning_levels[level]
+        if any(term in title_lower for term in level_terms):
+            score += 25
+
+        # Educational Content Score
+        educational_terms = ['tutorial', 'course', 'lesson', 'learn',
+                             'education', 'how to', 'guide', 'explained']
+        if any(term in title_lower for term in educational_terms):
+            score += 15
+        
+        return score
+    
+    def generate_response(self, videos, query_params):
+        # Gerenate Response Message with Reccomendations
+        if not videos:
+            return f"I couldn't find any videos about {query_params['subject']} {query_params['subtopic']} for {query_params['level']} learners. Could you try a different topic or learning level?"
+        
+        response = f"Based on your interest in learning about {query_params['subject']} {query_params['subtopic']} at a {query_params['level']} level, here are my top recommendations:\n\n"
+        
+        for i, video in enumerate(videos, 1):
+            response += f"{i}. \"{video['title']}\" by {video['channel_title']}\n"
+            response += f"   {video['view_count']:,} views • {video['url']}\n\n"
+            
+        response += "These videos were selected based on relevance, popularity, and their match to your specified learning level."
+        return response
 
     def process_user_request(self, user_input):
         # Main Method to Process User Input
-        """ONLY RETURNS EXTRACTED PARAMETERS - FIX LATER"""
+        # Extract Subject, Subtopic, and Learning Level
         query_params = self.process_query(user_input)
-        return (f"Extracted parameters: Subject: {query_params['subject']}, "
-                f"Subtopic: {query_params['subtopic']}, "
-                f"Level: {query_params['level']}")
-    
+
+        # Get Recommended Videos
+        videos = self.recommend_videos(query_params)
+
+        # Generate Response Message
+        response = self.generate_response(videos, query_params)
+      
     # TEST
     if __name__ == "__main__":
         agent = VideoAgent()
 
-        # Test with Sample User Inputs
-        test_queries = [
-            "I want to learn Python programming for beginners",
-            "How to create a website using HTML and CSS",
-            "Advanced machine learning tutorials",
-            "Learn data science for beginners",
-            "How to build a mobile app for Android",
-            "Intermediate level Java programming",
-            "Python tutorials for experienced developers",
-            "Introduction to web development",
-            "Advanced Python projects for professionals"
-        ]
-
-        for query in test_queries:
-            print(f"Query: {query}")
-            print(agent.process_user_request(query))
-            print()
+        test_query = "I want to learn Python data structures for beginners"
+        print(f"Processing Query: {test_query}")
+        print(agent.process_user_request(test_query))
