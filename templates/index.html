@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ad Populum</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      padding: 20px;
+      background-color: #686868;
+    }
+    .chat-container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: #fff;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+    }
+    .messages {
+      height: 400px;
+      overflow-y: auto;
+      padding: 10px;
+      background-color: #686868;
+      border-radius: 5px;
+      margin-bottom: 15px;
+    }
+    .message {
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+    }
+    .user-message {
+      background-color: #e2f0ff;
+      text-align: right;
+      margin-left: 20%;
+    }
+    .agent-message {
+      background-color: #f0f0f0;
+      margin-right: 20%;
+    }
+    #loading {
+      display: none;
+      text-align: center;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="chat-container">
+      <h1 class="text-center mb-4">ad Populum</h1>
+      <p class="text-center">PLEASE ENTER A TOPIC AND YOUR PREFERRED LEARNING LEVEL</p>
+
+      <div class="messages" id="messages">
+        <div class="message agent-message">
+          Hi! I'm Pop, your learning assistant. Tell me what you want to learn about and your skill level (beginner, intermediate, or advanced). I will then curate the best YouTube videos for you to learn from!
+        </div>
+      </div>
+
+      <div id="loading">INDEXING...</div>
+
+      <form id="query-form" class="input-group">
+        <input type="text" id="user-input" class="form-control" placeholder="e.g., Find beginner Python programming tutorials" required>
+        <button type="submit" class="btn btn-primary">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    document.getElementByID('query-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const userInput = document.getElementById('user-input').value.trim();
+      if (!userInput) return;
+
+      // Add User Message to Chat
+      const messagesDiv = document.getElementById('messages');
+      const userMessageDiv = document.createElement('div');
+      userMessageDiv.className = 'message user-message';
+      userMessageDiv.textContent = userInput;
+      messagesDiv.appendChild(userMessageDiv);
+
+      // Clear User Input
+      document.getElementById('user-input').value = '';
+
+      // Show Loading
+      document.getElementById('loading').style.display = 'block';
+
+      // Scroll to Bottom
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+      try {
+        // Send Request to Server
+        const response = await fetch('/ask', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/z-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            'user_input': userInput,
+          })
+        });
+
+        const data = await response.json();
+
+        // Add Agent Response to Chat
+        const agentMessageDiv = document.createElement('div');
+        agentMessageDiv.className = 'message agent-message';
+        agentMessageDiv.textContent = data.response;
+        messagesDiv.appendChiled(agentMessageDiv);
+      } catch (error) {
+        console.errror('Error:', error);
+
+        // Add Error Message
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'message agent-message';
+        errorDiv.textContent = 'Sorry, something went wrong. Please try again.';
+        messagesDiv.appendChild(errorDiv);
+      } finally {
+        // Hide Loading
+        document.getElementById('loading').style.display = 'none';
+
+        // Scroll to Bottom
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
+    });
+  </script>
+</body>
+</html>
