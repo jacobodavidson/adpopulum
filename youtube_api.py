@@ -18,18 +18,35 @@ class YouTubeAPI:
   def search_videos(self, query, max_results=50):
     # Search for videos based on query, return list of video IDs
     try:
-      search_response = self.youtube.search().list(
-        q=query,
-        part='id',
-        maxResults=max_results,
-        type='video',
-        relevanceLanguage='en'
-      ).execute()
+      video_ids = []
+      next_page_token = None
+      results_fetched = 0
 
-      video_ids = [
-        item['id']['videoId']
-        for item in search_response.get('items', [])
-      ]
+      while results_fetched < max_results:
+        # Fetch next page of search results
+        search_response = self.youtube.search().list(
+          q=query,
+          part='id',
+          maxResults=(150, max_results - results_fetched),
+          type='video',
+          relevanceLanguage='en',
+          pageToken=next_page_token
+        ).execute()
+
+        # Extract Video IDs
+        video_ids = [
+          item['id']['videoId']
+          for item in search_response.get('items', [])
+        ]
+
+        # Update Results Fetched
+        results_fetched += len(search_response.get('items', []))
+
+        # Check for Next Pages
+        next_page_token = search_response.get('nextPageToken')
+        if not next_page_token:
+          break
+
       return video_ids
     except HttpError as e:
       print(f"YouTubeAPI HTTP Error: {e}")

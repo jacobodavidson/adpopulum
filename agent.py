@@ -7,12 +7,12 @@ from datetime import datetime
 import traceback
 from dotenv import load_dotenv
 
-# Load environment variables
+# Load Environment Variables
 load_dotenv()
 
 class VideoAgent:
   def __init__(self):
-    """Initialize the learning video recommendation agent"""
+    # Initialize YouTube API client
     api_key = os.getenv('YOUTUBE_API_KEY')
     if not api_key:
       raise ValueError(
@@ -30,7 +30,8 @@ class VideoAgent:
       ],
       'intermediate': [
         'intermediate', 'middle', 'mid-level', 'improving', 'advancing',
-        'moderate', 'medium', 'average', 'mid'
+        'moderate', 'medium', 'average', 'mid', 'in-between', 'progressing',
+        'developing'
       ],
       'advanced': [
         'advanced', 'expert', 'professional', 'mastery', 'proficient',
@@ -42,12 +43,13 @@ class VideoAgent:
     self.common_words = [
       'find', 'search', 'get', 'show', 'me', 'about', 'on', 'for', 'videos',
       'video', 'tutorials', 'tutorial', 'lessons', 'lesson', 'please', 'want',
-      'need', 'looking', 'help', 'with', 'learning', 'learn', 'study',
-      'course', 'courses', 'class', 'classes', 'training', 'guide', 'guides'
+      'need', 'looking', 'help', 'with', 'learning', 'learn', 'study', 'a',
+      'an', 'the', 'how', 'to', 'in', 'at', 'from', 'by', 'using', 'course',
+      'courses', 'class', 'classes', 'training', 'guide', 'guides'
     ]
   
   def extract_parameters(self, user_input):
-    """Extract subject and learning level from user input"""
+    # Extract Learning Level, Subject
     user_input = user_input.lower()
     
     # Extract learning level
@@ -98,8 +100,57 @@ class VideoAgent:
       'level': level
     }
   
+  def search_videos(self, params, max_results=100):
+    # Search YouTube for Matching Videos
+    try:
+      subject = params['subject']
+      level = params['level']
+      
+      # Create search query
+      search_query = f"{subject} {level} tutorial"
+      print(f"Searching YouTube for: '{search_query}'")
+      
+      video_ids = []
+      next_page_token = None
+      results_fetched = 0
+
+      while results_fetched < max_results:
+        # Fetch a batch of results
+        search_response = self.youtube.search().list(
+          q=search_query,
+          part='id',
+          maxResults=min(50, max_results - results_fetched),
+          type='video',
+          relevanceLanguage='en',
+          pageToken=next_page_token
+        ).execute()
+
+        # Extract video IDs from the response
+        video_ids.extend([
+          item['id']['videoId']
+          for item in search_response.get('items', [])
+        ])
+
+        # Update the number of results fetched
+        results_fetched += len(search_response.get('items', []))
+
+        # Check if there is another page of results
+        next_page_token = search_response.get('nextPageToken')
+        if not next_page_token:
+          break
+
+      print(f"Total video IDs retrieved: {len(video_ids)}")
+      return video_ids
+    except HttpError as e:
+      print(f"YouTube API error: {e}")
+      return []
+    except Exception as e:
+      print(f"Error searching videos: {e}")
+      print(traceback.format_exc())
+      return []
+  
   def search_videos(self, params):
-    """Search for videos based on extracted parameters"""
+    # Search YouTube for videos matching subject and level
     try:
       subject = params['subject']
       level = params['level']
@@ -156,11 +207,15 @@ class VideoAgent:
           days_since_publication = (current_time - published_at).days
           
           freshness = 1.0
-          if days_since_publication < 30:
-            freshness = 0.7
-          elif days_since_publication > 730:
+          if days_since_publication <= 365: # 1 year
+            freshness = 1.0
+          elif days_since_publication <= 730: # 2 years
+            freshness = 0.9
+          elif days_since_publication <= 1095: # 3 years
             freshness = 0.8
-          
+          elif days_since_publication > 1095: # 4 years
+            freshness = 0.7
+
           # Create video object
           processed_video = {
             'id': video['id'],
@@ -168,7 +223,11 @@ class VideoAgent:
             'description': video['snippet']['description'],
             'channel': video['snippet']['channelTitle'],
             'published_at': video['snippet']['publishedAt'],
-            'thumbnail': video['snippet']['thumbnails']['high']['url'],
+            'thumbnail': (
+              video['snippet']['thumbnails'].get('high', {}).get('url', '') or
+              video['snippet']['thumbnails'].get('medium', {}).get('url', '') or
+              video['snippet']['thumbnails'].get('default', {}).get('url', '')
+            ),
             'view_count': view_count,
             'like_count': like_count,
             'comment_count': comment_count,
@@ -194,62 +253,67 @@ class VideoAgent:
       return processed_videos[:5]
       
     except HttpError as e:
-      print(f"YouTube API error: {e}")
+      print(f"YOUTUBE API ERROR: {e}")
       return []
     except Exception as e:
-      print(f"Error searching videos: {e}")
+      print(f"ERROR SEARCHING VIDEOS: {e}")
       print(traceback.format_exc())
       return []
   
   def calculate_video_score(self, video, subject, level):
-    """Calculate a score for video ranking"""
+    # Calculate a relevance score for the video
     score = 0
     
     # Base score from views (logarithmic scale)
     if video['view_count'] > 0:
-      score += math.log(video['view_count']) * 10
+      score += min(math.log(video['view_count'], 2), 10) * 75  # Cap log value
+    else:
+      score += 0
     
     # Like count contribution
     if video['like_count'] > 0:
-      score += math.log(video['like_count']) * 5
+      score += min(math.log(video['like_count'], 2), 10) * 50
+    else:
+      score += 0
     
     # Engagement factor
     score += video['engagement'] * 1000
     
     # Freshness factor
-    score *= video['freshness']
-    
+    score += video['freshness'] * 1000
+
+    # MIGHT NOT EVEN NEED THESE BELOW BECAUSE IT IS ALREADY IN THE SEARCH QUERY   
     # Title relevance
     title_lower = video['title'].lower()
     subject_keywords = subject.lower().split()
-    
+
     # Count matching keywords in title
     keyword_matches = sum(
       1 for keyword in subject_keywords if keyword in title_lower
     )
     if keyword_matches > 0:
-      score += keyword_matches * 15
+      score += keyword_matches * 100
     
     # Check for exact phrase match
     if subject.lower() in title_lower:
-      score += 30
+      score += 500
     
     # Check for learning level indicators
     level_terms = self.learning_levels[level]
     if any(term in title_lower for term in level_terms):
-      score += 25
+      score += 500
     
     # Educational content indicators
     educational_terms = [
       'tutorial', 'learn', 'course', 'lesson', 'how to', 'explained', 'guide'
     ]
     if any(term in title_lower for term in educational_terms):
-      score += 15
+      score += 500
     
     return score
   
   def format_response(self, videos, params):
-    """Format videos as natural language response"""
+    # Format Response as Natural Language
     if not videos:
       return (
         f"I couldn't find any good videos about {params['subject']} for "
@@ -285,9 +349,9 @@ class VideoAgent:
       
       return response
     except Exception as e:
-      print(f"Error processing request: {e}")
+      print(f"ERROR PROCESSING REQUEST: {e}")
       print(traceback.format_exc())
       return (
-        "Sorry, I encountered an error while processing your request. "
-        "Please try again."
+        "ERROR PROCESSING REQUEST."
+        "PLEASE TRY AGAIN."
       )
