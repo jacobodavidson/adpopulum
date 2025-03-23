@@ -1,26 +1,23 @@
 import os
-import nltk
-from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
-from dotenv import load_dotenv
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+import re
 import math
-import youtube_api 
+from datetime import datetime
+import traceback
+from dotenv import load_dotenv
 
 # Environment Variables
 load_dotenv()
 
-# Download NLTK Resources
-nltk.download('punkt', quiet=True)
-nltk.download('stopwords', quiet=True)
-nltk.download('wordnet', quiet=True)
-
 class VideoAgent:
     def __init__(self):
-        #Initialize the VideoAgent class.
-        self.lemmatizer = WordNetLemmatizer()
-        self.stop_words = set(stopwords.words('english'))
-        self.youtube_api = youtube_api.YouTubeAPI()
+        # Initialize YouTube API Client
+        api_key = os.getenv('YOUTUBE_API_KEY')
+        if not api_key:
+            raise ValueError('YOUTUBE_API_KEY is not set')
+        
+        self.youtube = build('youtube', 'v3', developerKey=api_key)
 
         # Define Learning Levels
         self.learning_levels = {
@@ -41,6 +38,12 @@ class VideoAgent:
                          'experienced', 'veteran', 'seasoned', 'high-skill',
                          'top-tier']
         }
+
+        # Common words to ignore in subject extraction
+        self.common_words = ['find', 'search', 'get', 'show', 'me', 'about', 'on', 'for', 'videos', 
+                             'video', 'tutorials', 'tutorial', 'lessons', 'lesson', 'please', 
+                             'want', 'need', 'looking', 'help', 'with', 'learning', 'learn', 'study', 
+                             'course', 'courses', 'class', 'classes', 'training', 'guide', 'guides']
 
     def process_query(self, user_input):
         # Extract Subject, Subtopic, and Learning Level from Input
