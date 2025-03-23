@@ -15,7 +15,7 @@ nltk.download('wordnet', quiet=True)
 
 class VideoAgent:
     def __init__(self):
-        """Initialize the VideoAgent class."""
+        #Initialize the VideoAgent class.
         self.lemmatizer = WordNetLemmatizer()
         self.stop_words = set(stopwords.words('english'))
 
@@ -41,7 +41,6 @@ class VideoAgent:
 
     def process_query(self, user_input):
         # Extract Subject, Subtopic, and Learning Level from Input
-
         # Tokenize and Preprocess User Input
         tokens = word_tokenize(user_input.lower())
         filtered_tokens = [self.lemmatizer.lemmatize(w) for w in tokens
