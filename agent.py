@@ -7,173 +7,287 @@ from datetime import datetime
 import traceback
 from dotenv import load_dotenv
 
-# Environment Variables
+# Load environment variables
 load_dotenv()
 
 class VideoAgent:
-    def __init__(self):
-        # Initialize YouTube API Client
-        api_key = os.getenv('YOUTUBE_API_KEY')
-        if not api_key:
-            raise ValueError('YOUTUBE_API_KEY is not set')
-        
-        self.youtube = build('youtube', 'v3', developerKey=api_key)
-
-        # Define Learning Levels
-        self.learning_levels = {
-            'beginner': ['beginner', 'basic', 'easy', 'introductory', 'intro',
-                         'new', 'novice', 'simple', 'starter', 'fundamental',
-                         'elementary', 'foundational', 'primary', 'rudimentary',
-                         'underlying', 'entry-level', 'first-time', 'learner',
-                         'starting'],
-            'intermediate': ['intermediate', 'mid-level', 'mid', 'average',
-                             'moderate', 'medium', 'standard', 'interim',
-                             'in-between', 'center', 'transitional',
-                             'progressive', 'developing', 'competent',
-                             'practiced', 'skilled'],
-            'advanced': ['advanced', 'complex', 'difficult', 'challenging',
-                         'complicated', 'sophisticated', 'intricate',
-                         'high-level', 'expert', 'master', 'pro',
-                         'professional', 'specialist', 'specialized', 'elite',
-                         'experienced', 'veteran', 'seasoned', 'high-skill',
-                         'top-tier']
-        }
-
-        # Common words to ignore in subject extraction
-        self.common_words = ['find', 'search', 'get', 'show', 'me', 'about', 'on', 'for', 'videos', 
-                             'video', 'tutorials', 'tutorial', 'lessons', 'lesson', 'please', 
-                             'want', 'need', 'looking', 'help', 'with', 'learning', 'learn', 'study', 
-                             'course', 'courses', 'class', 'classes', 'training', 'guide', 'guides']
-
-    def process_query(self, user_input):
-        # Extract Subject, Subtopic, and Learning Level from Input
-        # Tokenize and Preprocess User Input
-        tokens = word_tokenize(user_input.lower())
-        filtered_tokens = [self.lemmatizer.lemmatize(w) for w in tokens
-                           if w not in self.stop_words]
-
-        # Extract Learning Level
-        level = self._extract_learning_level(filtered_tokens,
-                                             user_input.lower())
-
-        # Extract Subject and Subtopic
-        # Remove Learning Level Keywords from Tokens
-        level_terms = []
-        for terms in self.learning_levels.values():
-            level_terms.extend(terms)
-
-        content_tokens = [t for t in filtered_tokens if t not in level_terms]
-
-        # Simplified Subject and Subtopic Extraction
-        # First Significant Noun Phrase is Subject
-        # Second Significant Noun Phrase is Subtopic (Try to improve this)
-
-        if len(content_tokens) >= 3:
-            subject = content_tokens[0]
-            subtopic = ' '.join(content_tokens[1:3])
-        elif len(content_tokens) == 2:
-            subject = content_tokens[0]
-            subtopic = content_tokens[1]
-        else:
-            subject = ' '.join(content_tokens)
-            subtopic = ""
-
-        return {
-            'subject': subject,
-            'subtopic': subtopic,
-            'level': level
-        }
-
-    def _extract_learning_level(self, tokens, original_input):
-        # Extract Learning Level from User Input with Keyword Matching
-        for level, synonyms in self.learning_levels.items():
-            if any(syn in tokens for syn in synonyms) or any(
-                    syn in original_input for syn in synonyms):
-                return level
-        return 'beginner'  # Default Learning Level
+  def __init__(self):
+    """Initialize the learning video recommendation agent"""
+    api_key = os.getenv('YOUTUBE_API_KEY')
+    if not api_key:
+      raise ValueError(
+        "YouTube API key not found. Please set YOUTUBE_API_KEY in .env file."
+      )
     
-    def recommend_videos(self, query_params):
-        # Returns List of Videos Sorted by Relevance Score
-        subject = query_params['subject']
-        subtopic = query_params['subtopic']
-        level = query_params['level']
-
-        # Get Videos from YouTube API
-        videos = self.youtube_api.search_specific_videos(
-            subject, subtopic, level)
-        
-        if not videos:
-            return []
-        
-        # Calculate Relevance Score for Each Video and Sort
-        for video in videos:
-            video['score'] = self.calculate_relevance_score(video, level, subject, subtopic)
-        
-        videos.sort(key=lambda x: x['score'], reverse=True)
-
-        return videos[:5]
+    self.youtube = build('youtube', 'v3', developerKey=api_key)
     
-    def calculate_relevance_score(self, video, level, subject, subtopic):
-        # Calculates Relevance Score for a Video
-        score = 0
-
-        # View Count Score
-        if video['view_count'] > 0:
-            score += math.log(video['view_count']) * 10
-        
-        # Like Count Score
-        if video['like_count'] > 0:
-            score += math.log(video['like_count']) * 5
-
-        # Title Subject/Subtopic Match Score
-        title_lower = video['title'].lower()
-        if subject.lower() in title_lower:
-            score += 30
-        if subtopic.lower() in title_lower:
-            score += 20
-        
-        # Check for Level Keywords in Title
-        level_terms = self.learning_levels[level]
-        if any(term in title_lower for term in level_terms):
-            score += 25
-
-        # Educational Content Score
-        educational_terms = ['tutorial', 'course', 'lesson', 'learn',
-                             'education', 'how to', 'guide', 'explained']
-        if any(term in title_lower for term in educational_terms):
-            score += 15
-        
-        return score
+    # Define learning levels and their synonyms
+    self.learning_levels = {
+      'beginner': [
+        'beginner', 'basic', 'intro', 'introduction', 'starting', 'novice',
+        'fundamentals', 'newbie', 'elementary', 'starter', 'new', 'start',
+        'noob'
+      ],
+      'intermediate': [
+        'intermediate', 'middle', 'mid-level', 'improving', 'advancing',
+        'moderate', 'medium', 'average', 'mid'
+      ],
+      'advanced': [
+        'advanced', 'expert', 'professional', 'mastery', 'proficient',
+        'master', 'pro', 'skilled', 'experienced', 'senior', 'hard'
+      ]
+    }
     
-    def generate_response(self, videos, query_params):
-        # Gerenate Response Message with Reccomendations
-        if not videos:
-            return f"I couldn't find any videos about {query_params['subject']} {query_params['subtopic']} for {query_params['level']} learners. Could you try a different topic or learning level?"
-        
-        response = f"Based on your interest in learning about {query_params['subject']} {query_params['subtopic']} at a {query_params['level']} level, here are my top recommendations:\n\n"
-        
-        for i, video in enumerate(videos, 1):
-            response += f"{i}. \"{video['title']}\" by {video['channel_title']}\n"
-            response += f"   {video['view_count']:,} views • {video['url']}\n\n"
-            
-        response += "These videos were selected based on relevance, popularity, and their match to your specified learning level."
-        return response
-
-    def process_user_request(self, user_input):
-        # Main Method to Process User Input
-        # Extract Subject, Subtopic, and Learning Level
-        query_params = self.process_query(user_input)
-
-        # Get Recommended Videos
-        videos = self.recommend_videos(query_params)
-
-        # Generate Response Message
-        response = self.generate_response(videos, query_params)
+    # Common words to ignore in subject extraction
+    self.common_words = [
+      'find', 'search', 'get', 'show', 'me', 'about', 'on', 'for', 'videos',
+      'video', 'tutorials', 'tutorial', 'lessons', 'lesson', 'please', 'want',
+      'need', 'looking', 'help', 'with', 'learning', 'learn', 'study',
+      'course', 'courses', 'class', 'classes', 'training', 'guide', 'guides'
+    ]
+  
+  def extract_parameters(self, user_input):
+    """Extract subject and learning level from user input"""
+    user_input = user_input.lower()
+    
+    # Extract learning level
+    level = 'beginner'  # Default
+    level_found = False
+    level_match = ""
+    
+    for lvl, keywords in self.learning_levels.items():
+      for keyword in keywords:
+        if (
+          f" {keyword} " in f" {user_input} " or
+          user_input.startswith(f"{keyword} ") or
+          user_input.endswith(f" {keyword}")
+        ):
+          level = lvl
+          level_found = True
+          level_match = keyword
+          break
+      if level_found:
+        break
+    
+    # Remove the level keyword before extracting subject
+    if level_match:
+      user_input = re.sub(
+        r'\b' + re.escape(level_match) + r'\b', '', user_input
+      )
+    
+    # Clean up the input
+    user_input = re.sub(r'[^\w\s]', '', user_input).strip()
+    
+    # Split the remaining input into words
+    words = user_input.split()
+    
+    # Filter out common words
+    filtered_words = [
+      w for w in words if w.lower() not in self.common_words
+    ]
+    
+    if not filtered_words:
+      # Use original words if filtering removed everything
+      subject = ' '.join(words) if words else "programming"
+    else:
+      # Use all remaining words as the subject
+      subject = ' '.join(filtered_words)
+    
+    return {
+      'subject': subject,
+      'level': level
+    }
+  
+  def search_videos(self, params):
+    """Search for videos based on extracted parameters"""
+    try:
+      subject = params['subject']
+      level = params['level']
       
-    # TEST
-    if __name__ == "__main__":
-        agent = VideoAgent()
-
-        test_query = "I want to learn Python data structures for beginners"
-        print(f"Processing Query: {test_query}")
-        print(agent.process_user_request(test_query))
+      # Create search query
+      search_query = f"{subject} {level} tutorial"
+      print(f"Searching YouTube for: '{search_query}'")
+      
+      # Perform search
+      search_response = self.youtube.search().list(
+        q=search_query,
+        part='id,snippet',
+        maxResults=20,
+        type='video',
+        relevanceLanguage='en'
+      ).execute()
+      
+      # Extract video IDs
+      video_ids = [
+        item['id']['videoId']
+        for item in search_response.get('items', [])
+      ]
+      
+      if not video_ids:
+        return []
+      
+      # Get more details about videos
+      videos_response = self.youtube.videos().list(
+        part='snippet,statistics,contentDetails',
+        id=','.join(video_ids)
+      ).execute()
+      
+      # Process videos
+      processed_videos = []
+      
+      for video in videos_response.get('items', []):
+        try:
+          # Extract statistics with defaults for missing values
+          stats = video.get('statistics', {})
+          view_count = int(stats.get('viewCount', 0))
+          like_count = int(stats.get('likeCount', 0))
+          comment_count = int(stats.get('commentCount', 0))
+          
+          # Calculate engagement score
+          engagement = 0
+          if view_count > 0:
+            engagement = (like_count + comment_count) / view_count
+          
+          # Calculate freshness score
+          published_at = datetime.strptime(
+            video['snippet']['publishedAt'], '%Y-%m-%dT%H:%M:%SZ'
+          )
+          current_time = datetime.utcnow()
+          days_since_publication = (current_time - published_at).days
+          
+          freshness = 1.0
+          if days_since_publication < 30:
+            freshness = 0.7
+          elif days_since_publication > 730:
+            freshness = 0.8
+          
+          # Create video object
+          processed_video = {
+            'id': video['id'],
+            'title': video['snippet']['title'],
+            'description': video['snippet']['description'],
+            'channel': video['snippet']['channelTitle'],
+            'published_at': video['snippet']['publishedAt'],
+            'thumbnail': video['snippet']['thumbnails']['high']['url'],
+            'view_count': view_count,
+            'like_count': like_count,
+            'comment_count': comment_count,
+            'engagement': engagement,
+            'freshness': freshness,
+            'url': f"https://www.youtube.com/watch?v={video['id']}"
+          }
+          
+          # Calculate relevance score for ranking
+          processed_video['score'] = self.calculate_video_score(
+            processed_video, subject, level
+          )
+          processed_videos.append(processed_video)
+          
+        except KeyError as e:
+          print(f"Missing data in video {video.get('id', 'unknown')}: {e}")
+          continue
+      
+      # Sort by score (highest first)
+      processed_videos.sort(key=lambda x: x['score'], reverse=True)
+      
+      # Return top 5 videos
+      return processed_videos[:5]
+      
+    except HttpError as e:
+      print(f"YouTube API error: {e}")
+      return []
+    except Exception as e:
+      print(f"Error searching videos: {e}")
+      print(traceback.format_exc())
+      return []
+  
+  def calculate_video_score(self, video, subject, level):
+    """Calculate a score for video ranking"""
+    score = 0
+    
+    # Base score from views (logarithmic scale)
+    if video['view_count'] > 0:
+      score += math.log(video['view_count']) * 10
+    
+    # Like count contribution
+    if video['like_count'] > 0:
+      score += math.log(video['like_count']) * 5
+    
+    # Engagement factor
+    score += video['engagement'] * 1000
+    
+    # Freshness factor
+    score *= video['freshness']
+    
+    # Title relevance
+    title_lower = video['title'].lower()
+    subject_keywords = subject.lower().split()
+    
+    # Count matching keywords in title
+    keyword_matches = sum(
+      1 for keyword in subject_keywords if keyword in title_lower
+    )
+    if keyword_matches > 0:
+      score += keyword_matches * 15
+    
+    # Check for exact phrase match
+    if subject.lower() in title_lower:
+      score += 30
+    
+    # Check for learning level indicators
+    level_terms = self.learning_levels[level]
+    if any(term in title_lower for term in level_terms):
+      score += 25
+    
+    # Educational content indicators
+    educational_terms = [
+      'tutorial', 'learn', 'course', 'lesson', 'how to', 'explained', 'guide'
+    ]
+    if any(term in title_lower for term in educational_terms):
+      score += 15
+    
+    return score
+  
+  def format_response(self, videos, params):
+    """Format videos as natural language response"""
+    if not videos:
+      return (
+        f"I couldn't find any good videos about {params['subject']} for "
+        f"{params['level']} level learners. Could you try a different search "
+        f"query or learning level?"
+      )
+    
+    # Create response message
+    response = (
+      f"Here are some {params['level']} level videos for "
+      f"'{params['subject']}':\n\n"
+    )
+    
+    # Add each video to the response
+    for i, video in enumerate(videos, 1):
+      response += f"{i}. {video['title']} by {video['channel']}\n"
+      response += f"   {video['view_count']:,} views • {video['url']}\n\n"
+    
+    return response
+  
+  def process_user_request(self, user_input):
+    """Main method to process a user request"""
+    try:
+      # Extract parameters from user input
+      params = self.extract_parameters(user_input)
+      print(f"Extracted parameters: {params}")
+      
+      # Find videos matching parameters
+      videos = self.search_videos(params)
+      
+      # Format response
+      response = self.format_response(videos, params)
+      
+      return response
+    except Exception as e:
+      print(f"Error processing request: {e}")
+      print(traceback.format_exc())
+      return (
+        "Sorry, I encountered an error while processing your request. "
+        "Please try again."
+      )

@@ -5,128 +5,490 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ad Populum</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #686868;
+      background-color: #242424;
+      color: #ffffff;
       padding: 0;
       margin: 0;
     }
-    .chat-container {
-      max-width: 800px;
+    
+    .app-container {
+      max-width: 900px;
       margin: 0 auto;
-      background-color: #ffffff;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
       padding: 20px;
     }
+    
+    .header {
+      text-align: center;
+      padding: 20px 0;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #e9ecef;
+    }
+    
+    .header h1 {
+      font-weight: bold;
+      color: #ffffff;
+      margin-bottom: 5px;
+    }
+    
+    .header p {
+      color: #ffffff;
+    }
+    
+    .chat-container {
+      background-color: rgb(0, 0, 0);
+      border-radius: 10px;
+      box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
     .messages {
-      height: 400px;
+      height: 300px;
       overflow-y: auto;
-      padding: 10px;
-      background-color: #686868;
-      border-radius: 5px;
+      padding: 15px;
+      background-color: #858383;
+      border-radius: 8px;
       margin-bottom: 15px;
     }
+    
     .message {
-      padding: 10px;
-      margin-bottom: 10px;
-      border-radius: 5px;
+      padding: 12px 16px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      max-width: 80%;
+      word-wrap: break-word;
     }
+    
     .user-message {
-      background-color: #e2f0ff;
-      text-align: right;
-      margin-left: 20%;
+      background-color: #8c00ff;
+      color: white;
+      margin-left: auto;
     }
+    
     .agent-message {
-      background-color: #f0f0f0;
-      margin-right: 20%;
+      background-color: #e9ecef;
+      color: #212529;
     }
-    #loading {
+    
+    .input-container {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .input-container input {
+      flex-grow: 1;
+      border-radius: 20px;
+      border: 1px solid #ced4da;
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+    
+    .input-container button {
+      border-radius: 20px;
+      padding: 10px 20px;
+      background-color: #8c00ff;
+      color: white;
+      border: none;
+      font-weight: bold;
+    }
+    
+    .loading {
       display: none;
       text-align: center;
       margin: 10px 0;
+      color: #858383;
     }
-  </style>
+    
+    .loading-spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #8c00ff;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    /* Results Container Styles */
+    .results-container {
+      background-color: #000000;
+      border-radius: 10px;
+      box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+      padding: 20px;
+      display: none;
+    }
+    
+    .results-header {
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #ffffff;
+    }
+    
+    .results-list {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    .video-item {
+      display: flex;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      background-color: #fff;
+    }
+    
+    .video-thumbnail {
+      width: 320px;
+      min-width: 320px;
+      height: 180px;
+      position: relative;
+      background-color: #858383;
+      overflow: hidden;
+    }
+    
+    .thumbnail-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .play-icon {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 3rem;
+      opacity: 0.8;
+      transition: opacity 0.2s;
+    }
+    
+    .video-item:hover .play-icon {
+      opacity: 1;
+    }
+    
+    .video-info {
+      padding: 15px;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .video-title {
+      color: #6c757d;
+      font-weight: bold;
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+    
+    .video-channel {
+      color: #6c757d;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+    
+    .video-stats {
+      color: #6c757d;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .video-stats i {
+      margin-right: 5px;
+    }
+    
+    .watch-button {
+      margin-top: auto;
+      align-self: flex-start;
+      padding: 8px 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+    
+    .watch-button:hover {
+      background-color: #0069d9;
+      color: white;
+      text-decoration: none;
+    }
+    
+    .no-results {
+      text-align: center;
+      padding: 40px;
+      color: #6c757d;
+    }
+    
+    .search-summary {
+      margin-bottom: 20px;
+      font-size: 16px;
+      color: #495057;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .video-item {
+        flex-direction: column;
+      }
+      
+      .video-thumbnail {
+        width: 100%;
+        height: 200px;
+      }
+      
+      .watch-button {
+        align-self: center;
+        width: 100%;
+        text-align: center;
+      }
+    }
+</style>
 </head>
 <body>
-  <div class="container">
+  <div class="app-container">
+    <div class="header">
+      <h1>ad Populum</h1>
+      <p>YouTube Parsing AI Agent</p>
+    </div>
+    
     <div class="chat-container">
-      <h1 class="text-center mb-4">ad Populum</h1>
-      <p class="text-center">PLEASE ENTER A TOPIC AND YOUR PREFERRED LEARNING LEVEL</p>
-
       <div class="messages" id="messages">
         <div class="message agent-message">
-          Hi! I'm Pop, your learning assistant. Tell me what you want to learn about and your skill level (beginner, intermediate, or advanced). I will then curate the best YouTube videos for you to learn from!
+          Greetings! Tell me what subject you want to learn about and your skill level (beginner, intermediate, or advanced), and I'll find the best YouTube videos for you!
         </div>
       </div>
-
-      <div id="loading">INDEXING...</div>
-
-      <form id="query-form" class="input-group">
-        <input type="text" id="user-input" class="form-control" placeholder="e.g., Find beginner Python programming tutorials" required>
-        <button type="submit" class="btn btn-primary">Send</button>
-      </form>
+      
+      <div class="loading" id="loading">
+        <span class="loading-spinner"></span> Searching for the best videos...
+      </div>
+      
+      <div class="input-container">
+        <input type="text" id="user-input" placeholder="e.g., beginner python course" required>
+        <button type="button" id="send-button">Send</button>
+      </div>
+    </div>
+    
+    <div class="results-container" id="results-container">
+      <div class="results-header">
+        <h3>Recommended Videos</h3>
+        <div class="search-summary" id="search-summary"></div>
+      </div>
+      
+      <div class="results-list" id="results-list">
+        <!-- Videos here -->
+      </div>
     </div>
   </div>
 
   <script>
-    document.getElementById('query-form').addEventListener('submit', async function(e) {
-      e.preventDefault();
-
-      const userInput = document.getElementById('user-input').value.trim();
-      if (!userInput) return;
-
-      // Add User Message to Chat
-      const messagesDiv = document.getElementById('messages');
-      const userMessageDiv = document.createElement('div');
-      userMessageDiv.className = 'message user-message';
-      userMessageDiv.textContent = userInput;
-      messagesDiv.appendChild(userMessageDiv);
-
-      // Clear User Input
-      document.getElementById('user-input').value = '';
-
-      // Show Loading
-      document.getElementById('loading').style.display = 'block';
-
-      // Scroll to Bottom
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-      try {
-        // Send Request to Server
-        const response = await fetch('/ask', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            'user_input': userInput,
-          })
-        });
-
-        const data = await response.json();
-
-        // Add Agent Response to Chat
-        const agentMessageDiv = document.createElement('div');
-        agentMessageDiv.className = 'message agent-message';
-        agentMessageDiv.textContent = data.response;
-        messagesDiv.appendChild(agentMessageDiv);
-      } catch (error) {
-        console.error('Error:', error);
-
-        // Add Error Message
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'message agent-message';
-        errorDiv.textContent = 'Sorry, something went wrong. Please try again.';
-        messagesDiv.appendChild(errorDiv);
-      } finally {
-        // Hide Loading
-        document.getElementById('loading').style.display = 'none';
-
-        // Scroll to Bottom
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    document.addEventListener('DOMContentLoaded', function() {
+      const messagesContainer = document.getElementById('messages');
+      const userInput = document.getElementById('user-input');
+      const sendButton = document.getElementById('send-button');
+      const loadingIndicator = document.getElementById('loading');
+      const resultsContainer = document.getElementById('results-container');
+      const resultsList = document.getElementById('results-list');
+      const searchSummary = document.getElementById('search-summary');
+      
+      // Function to extract video information from API response text
+      function extractVideos(responseText) {
+        const videos = [];
+        
+        // Check if this is a video results message
+        if (responseText.includes('Here are some') && responseText.includes('views •')) {
+          // Extract level and subject from first line
+          let firstLine = responseText.split('\n\n')[0];
+          let searchParams = {
+            level: 'beginner', // default
+            subject: 'videos'
+          };
+          
+          // Try to extract level and subject
+          const levelMatch = firstLine.match(/some\s+(\w+)\s+level\s+videos\s+for\s+'([^']+)'/);
+          if (levelMatch && levelMatch.length >= 3) {
+            searchParams.level = levelMatch[1];
+            searchParams.subject = levelMatch[2];
+          }
+          
+          // Extract videos using regex
+          const videoPattern = /(\d+)\.\s+(.*?)\s+by\s+(.*?)\n\s+(\d+,?\d*)\s+views\s+•\s+(https:\/\/www\.youtube\.com\/watch\?v=[\w-]+)/g;
+          let match;
+          
+          while ((match = videoPattern.exec(responseText)) !== null) {
+            if (match.length >= 6) {
+              const videoId = match[5].split('v=')[1];
+              videos.push({
+                title: match[2].trim(),
+                channel: match[3].trim(),
+                views: match[4].trim(),
+                url: match[5].trim(),
+                thumbnail: `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`
+              });
+            }
+          }
+          
+          return {
+            videos: videos,
+            params: searchParams
+          };
+        }
+        
+        return { videos: [], params: { level: '', subject: '' } };
       }
+      
+      // Function to update the results section
+      function updateResults(videos, params) {
+        // Clear previous results
+        resultsList.innerHTML = '';
+        
+        // Update search summary
+        searchSummary.textContent = `Found ${videos.length} ${params.level} level videos for "${params.subject}"`;
+        
+        if (videos.length === 0) {
+          resultsList.innerHTML = `
+            <div class="no-results">
+              <i class="fas fa-search" style="font-size: 3rem; margin-bottom: 20px;"></i>
+              <p>No videos found matching your search criteria.</p>
+              <p>Try a different topic or learning level.</p>
+            </div>
+          `;
+        } else {
+          // Add each video item
+          videos.forEach((video, index) => {
+            const videoItem = document.createElement('div');
+            videoItem.className = 'video-item';
+            videoItem.innerHTML = `
+              <div class="video-thumbnail">
+                <img class="thumbnail-img" src="${video.thumbnail}" alt="${video.title}">
+                <div class="play-icon">
+                  <i class="fas fa-play-circle"></i>
+                </div>
+              </div>
+              <div class="video-info">
+                <div class="video-title">${video.title}</div>
+                <div class="video-channel">${video.channel}</div>
+                <div class="video-stats">
+                  <i class="fas fa-eye"></i> ${video.views} views
+                </div>
+                <a href="${video.url}" target="_blank" class="watch-button">
+                  <i class="fab fa-youtube"></i> Watch on YouTube
+                </a>
+              </div>
+            `;
+            resultsList.appendChild(videoItem);
+          });
+        }
+        
+        // Show results container
+        resultsContainer.style.display = 'block';
+      }
+      
+      // Function to add message to chat
+      function addMessage(text, isUser) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = isUser ? 'message user-message' : 'message agent-message';
+        messageDiv.textContent = text;
+        messagesContainer.appendChild(messageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+      
+      // Function to add a simple confirmation message
+      function addConfirmationMessage() {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message agent-message';
+        messageDiv.textContent = "I've found some videos that match your request. Check out the recommendations below!";
+        messagesContainer.appendChild(messageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+      
+      // Function to send user input to server
+      async function sendMessage() {
+        const text = userInput.value.trim();
+        if (!text) return;
+        
+        // Add user message to chat
+        addMessage(text, true);
+        
+        // Clear input
+        userInput.value = '';
+        
+        // Show loading indicator
+        loadingIndicator.style.display = 'block';
+        
+        try {
+          // Send request to server
+          const response = await fetch('/ask', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+              'user_input': text
+            })
+          });
+          
+          const data = await response.json();
+          
+          // Process video results
+          const results = extractVideos(data.response);
+          
+          if (results.videos.length > 0) {
+            // Add simple confirmation message instead of full response
+            addConfirmationMessage();
+            
+            // Update results section
+            updateResults(results.videos, results.params);
+          } else {
+            // Add original response if no videos extracted
+            addMessage(data.response, false);
+            
+            // Hide results container
+            resultsContainer.style.display = 'none';
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          
+          // Add error message
+          addMessage('Sorry, I encountered an error while searching. Please try again.', false);
+          
+          // Hide results container
+          resultsContainer.style.display = 'none';
+        } finally {
+          // Hide loading indicator
+          loadingIndicator.style.display = 'none';
+        }
+      }
+      
+      // Event listeners
+      sendButton.addEventListener('click', sendMessage);
+      
+      userInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          sendMessage();
+        }
+      });
+      
+      // Focus input on page load
+      userInput.focus();
     });
   </script>
 </body>
