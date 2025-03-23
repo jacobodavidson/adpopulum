@@ -68,3 +68,51 @@ class YouTubeAPI:
     # Create Search Query
     search_query = f"{subject} {subtopic} {level} tutorial"
     search_query = search_query.strip()
+
+    # Search for Videos
+    video_ids = self.search_videos(search_query)
+
+    if not video_ids:
+      return []
+    
+    # Get Video Details
+    video_details = self.get_video_details(video_ids)
+
+    processed_videos = []
+    for video in video_details:
+      try:
+        processed_video = {
+          'id': video['id'],
+          'title': video ['snippet']['title'],
+          'description': video['snippet']['description'][:200] + '...' if len(video['snippet']['description']) > 200 else video['snippet']['description'],
+          'thumbnail': video['snippet']['thumbnails']['high']['url'],
+          'channel_title': video['snippet']['channelTitle'],
+          'published_at': video['snippet']['publishedAt'],
+          'view_count': int(video['statistics'].get('viewCount', 0)),
+          'like_count': int(video['statistics'].get('likeCount', 0)),
+          'comment_count': int(video['statistics'].get('commentCount', 0)),
+          'url': f"https://www.youtube.com/watch?v={video['id']}"
+        }
+        processed_videos.append(processed_video)
+      except KeyError as e:
+        print(f"Error Processing Video: {e}")
+        continue
+    
+    return processed_videos4
+
+# TEST
+if __name__ == "__main__":
+  youtube_api = YouTubeAPI()
+
+  # Test Search Videos
+  print("Testing YouTube API Search...")
+  videos = youtube_api.search_educational_videos("Python", "data structures", "beginner")
+  print(f"Found {len(videos)} videos")
+
+  # Print First 3 videos
+  for i, video in enumerate(videos[:3], 1):
+    print(f"\nVideo {i}:")
+    print(f"Title: {video['title']}")
+    print(f"Channel: {video['channel_title']}")
+    print(f"Views: {video['view_count']}")
+    print(f"URL: {video['url']}")
