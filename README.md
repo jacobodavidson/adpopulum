@@ -93,15 +93,25 @@ An AI-powered agent that finds the best YouTube educational videos based on your
 
 ## Project Structure
 adpopulum/
+
 ├── templates/
+
 │   └── index.html         # Frontend HTML template
+
 ├── static/
+
 │   └── style.css          # Optional CSS for styling
+
 ├── agent.py               # Core logic for video search and ranking
+
 ├── youtube_api.py         # YouTube API integration
+
 ├── app.py                 # Flask application
+
 ├── requirements.txt       # Python dependencies
+
 └── README.md              # Project documentation
+
 
 ## Contributing
 
